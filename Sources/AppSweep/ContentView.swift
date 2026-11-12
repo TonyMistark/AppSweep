@@ -352,8 +352,16 @@ struct BottomBarView: View {
             Spacer()
 
             if vm.isDeleting {
-                ProgressView()
-                    .controlSize(.small)
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    if let p = vm.deletionProgress {
+                        Text("正在清理 \(p.done)/\(p.total)")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
             } else {
                 Button {
                     vm.startDeletion()
@@ -423,7 +431,7 @@ struct ResultPanelView: View {
 
     @ViewBuilder
     private func recordRow(_ record: DeletionRecord) -> some View {
-        let (icon, color, detail) = outcomeMeta(record.outcome)
+        let (icon, color, detail) = outcomeMeta(record)
         HStack(spacing: 8) {
             Image(systemName: icon).foregroundStyle(color)
             VStack(alignment: .leading, spacing: 2) {
@@ -438,13 +446,15 @@ struct ResultPanelView: View {
             Text(detail)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 220, alignment: .trailing)
         }
     }
 
-    private func outcomeMeta(_ outcome: DeletionOutcome) -> (String, Color, String) {
-        switch outcome {
+    private func outcomeMeta(_ record: DeletionRecord) -> (String, Color, String) {
+        switch record.outcome {
         case .movedToTrash:
-            return ("trash", .secondary, humanSize(0))
+            return ("checkmark.circle", .green, humanSize(record.item.size))
         case .skipped(let reason):
             return ("minus.circle", .orange, reason.rawValue)
         case .failed(let err):

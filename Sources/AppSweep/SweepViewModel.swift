@@ -17,6 +17,7 @@ final class SweepViewModel: ObservableObject {
     @Published var deletionRecords: [DeletionRecord] = []
     @Published var showResultPanel = false
     @Published var toastMessage: String?
+    @Published var deletionProgress: (done: Int, total: Int)?
 
     private let scanEngine = ScanEngine()
 
@@ -120,15 +121,23 @@ final class SweepViewModel: ObservableObject {
 
         isDeleting = true
         deletionRecords.removeAll()
+        deletionProgress = (0, toDelete.count)
+
+        let engine = DeletionEngine()
+        engine.onRecord = { [weak self] record in
+            self?.deletionRecords.append(record)
+        }
+        engine.onProgress = { [weak self] done, total in
+            self?.deletionProgress = (done, total)
+        }
 
         Task { [weak self] in
             guard let self else { return }
-            let records = await DeletionEngine.delete(items: toDelete)
-            await MainActor.run {
-                self.deletionRecords = records
-                self.isDeleting = false
-                self.showResultPanel = true
-            }
+            let records = await engine.delete(items: toDelete)
+            self.deletionRecords = records.sorted { $0.timestamp < $1.timestamp }
+            self.deletionProgress = nil
+            self.isDeleting = false
+            self.showResultPanel = true
         }
     }
 
@@ -143,7 +152,7 @@ final class SweepViewModel: ObservableObject {
     }
 
     func openTrash() {
-        NSWorkspace.shared.open(URL(fileURLWithPath: "~/.Trash").standardizedFileURL)
+        NSWorkspace.shared.open(URL(fileURLWithPath: NSHomeDirectory() + "/.Trash"))
     }
 
     func clearAll() {
