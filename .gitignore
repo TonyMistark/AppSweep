@@ -1,0 +1,6 @@
+.build/
+dist/
+*.xcuserdata/
+*.xcodeproj/xcuserdata/
+.DS_Store
+.metadata_never_index
