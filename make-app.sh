@@ -82,5 +82,12 @@ echo "── 4/4 校验…"
 codesign --verify --verbose "$APP" 2>&1 | tail -1
 spctl --assess --type execute "$APP" 2>&1 || true
 
+# DMG：Release 附件名 appsweep-<版本>.dmg，UpdateChecker 按这个名字认附件
+DMG="$OUT_DIR/appsweep-$VERSION.dmg"
+rm -f "$DMG"
+hdiutil create -volname "$APP_NAME $VERSION" -srcfolder "$APP" -ov -format UDZO "$DMG" >/dev/null
+echo "   DMG：$DMG"
+
 echo ""
 echo "✓ 完成：$APP（版本 $VERSION）"
+echo "  DMG：$DMG"

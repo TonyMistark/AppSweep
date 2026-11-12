@@ -10,6 +10,11 @@ let package = Package(
         .executableTarget(
             name: "AppSweep",
             path: "Sources/AppSweep"
-        )
+        ),
+        .testTarget(
+            name: "AppSweepTests",
+            dependencies: ["AppSweep"],
+            path: "Tests/AppSweepTests"
+        ),
     ]
 )
