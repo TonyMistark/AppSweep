@@ -7,6 +7,10 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if !vm.hasFullDiskAccess {
+                PermissionBanner()
+                Divider()
+            }
             if vm.target == nil {
                 DropZoneView()
             } else {
@@ -65,6 +69,35 @@ struct ContentView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - 权限提示条
+
+struct PermissionBanner: View {
+    @EnvironmentObject var vm: SweepViewModel
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.shield.fill")
+                .foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("未开启「完全磁盘访问权限」")
+                    .font(.callout)
+                    .fontWeight(.medium)
+                Text("部分 App 的残留文件可能扫不到，也无法清理系统级目录")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("开启权限") { vm.openFullDiskAccessSettings() }
+                .controlSize(.small)
+            Button("已开启") { vm.refreshPermissionStatus() }
+                .controlSize(.small)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color.orange.opacity(0.08))
     }
 }
 
@@ -214,12 +247,16 @@ struct AppHeaderView: View {
 // MARK: - 扫描中
 
 struct ScanningProgressView: View {
+    @EnvironmentObject var vm: SweepViewModel
+
     var body: some View {
         VStack(spacing: 16) {
             ProgressView()
                 .progressViewStyle(.circular)
-            Text("正在扫描残留文件…")
+            Text(vm.scanStep ?? "正在扫描残留文件…")
                 .foregroundStyle(.secondary)
+                .contentTransition(.opacity)
+                .animation(.easeInOut(duration: 0.2), value: vm.scanStep)
         }
     }
 }

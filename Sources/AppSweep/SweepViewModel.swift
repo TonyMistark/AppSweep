@@ -18,8 +18,8 @@ final class SweepViewModel: ObservableObject {
     @Published var showResultPanel = false
     @Published var toastMessage: String?
     @Published var deletionProgress: (done: Int, total: Int)?
-
-    private let scanEngine = ScanEngine()
+    @Published var scanStep: String?
+    @Published var hasFullDiskAccess = FullDiskAccess.isGranted
 
     // MARK: - 派生
 
@@ -79,19 +79,38 @@ final class SweepViewModel: ObservableObject {
         guard let target = target else { return }
         isScanning = true
         scanResult = nil
+        scanStep = "正在准备扫描…"
+
+        let engine = ScanEngine { [weak self] step in
+            Task { @MainActor in
+                self?.scanStep = step
+            }
+        }
 
         Task { [weak self] in
             guard let self else { return }
-            let result = await scanEngine.scan(target: target)
-            await MainActor.run {
-                self.scanResult = result
-                self.checkedIDs = Set(result.items.filter { $0.category.defaultChecked }.map(\.id))
-                self.isScanning = false
-                if result.items.isEmpty {
-                    self.showToast("没找到残留文件，已经很干净了")
-                }
+            let result = await engine.scan(target: target)
+            self.scanResult = result
+            self.checkedIDs = Set(result.items.filter { $0.category.defaultChecked }.map(\.id))
+            self.isScanning = false
+            self.scanStep = nil
+            if result.items.isEmpty {
+                self.showToast("没找到残留文件，已经很干净了")
             }
         }
+    }
+
+    // MARK: - 权限体检
+
+    func refreshPermissionStatus() {
+        hasFullDiskAccess = FullDiskAccess.isGranted
+        if hasFullDiskAccess {
+            showToast("权限已生效")
+        }
+    }
+
+    func openFullDiskAccessSettings() {
+        FullDiskAccess.openSettings()
     }
 
     func toggleCheck(_ item: ScannedItem) {

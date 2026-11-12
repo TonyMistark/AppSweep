@@ -4,12 +4,19 @@ import AppKit
 /// 扫描引擎：给定 AppTarget，枚举所有关联文件
 final class ScanEngine {
 
+    /// 当前扫描阶段回调（在后台线程触发）
+    private let onStep: @Sendable (String) -> Void
+
+    init(onStep: @escaping @Sendable (String) -> Void = { _ in }) {
+        self.onStep = onStep
+    }
+
     /// 扫描目标 App，返回 ScanResult
     func scan(target: AppTarget) async -> ScanResult {
-        let result = ScanResult(target: target, items: [], startedAt: Date())
+        let startedAt = Date()
         var items: [ScannedItem] = []
 
-        // Step 1: 标准路径并发枚举
+        onStep("正在扫描用户库目录…")
         items.append(contentsOf: await withTaskGroup(of: [ScannedItem].self) { group in
             for rule in standardPathRules(for: target) {
                 group.addTask { [weak self] in
@@ -24,22 +31,22 @@ final class ScanEngine {
             return collected
         })
 
-        // Step 2: Spotlight 扩展属性（带 2s 超时）
+        onStep("正在查询 Spotlight 索引…")
         let spotlightItems = spotLightScan(bundleID: target.bundleID, timeout: 2.0)
         items.append(contentsOf: spotlightItems)
 
-        // Step 3: 系统级路径
+        onStep("正在检查系统级路径…")
         let systemItems = enumerateSystemPaths(for: target)
         items.append(contentsOf: systemItems)
 
-        // Step 4: 去重 + 过滤 App 本体
+        onStep("正在整理扫描结果…")
         items = deduplicate(items)
             .filter { $0.url.path != target.bundleURL.path }
 
         return ScanResult(
             target: target,
             items: items,
-            startedAt: result.startedAt,
+            startedAt: startedAt,
             finishedAt: Date()
         )
     }
